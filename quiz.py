@@ -1,84 +1,36 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+import telebot
+from telebot import types
 
-# Токен бота
-TOKEN = "7779914668:AAEuMOeS7yCYKLaAAF6FRHW6ooBwJjTxfEc"
+bot = telebot.TeleBot('7779914668:AAEuMOeS7yCYKLaAAF6FRHW6ooBwJjTxfEc')
 
-# Вопросы и ответы
-questions = [
-    {
-        "question": "Какой язык программирования используется для создания Telegram-ботов?",
-        "options": ["Python", "JavaScript", "C++", "Ruby"],
-        "correct_option": 0
-    },
-    {
-        "question": "Какой язык наиболее популярен для веб-разработки?",
-        "options": ["Python", "C#", "JavaScript", "R"],
-        "correct_option": 2
-    }
-]
+@bot.message_handler(commands=['start'])
+def start(message):
 
-# Хранение состояния пользователя
-user_data = {}
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    btn1 = types.KeyboardButton("👋 Поздороваться")
+    markup.add(btn1)
+    bot.send_message(message.from_user.id, "👋 Привет! Я твой бот-помошник!", reply_markup=markup)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Инициализация опроса для пользователя"""
-    user_id = update.message.chat_id
-    user_data[user_id] = {"score": 0, "question_index": 0}
-    await ask_question(update, context)
+@bot.message_handler(content_types=['text'])
+def get_text_messages(message):
 
-async def ask_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Отправка вопроса и вариантов ответа"""
-    user_id = update.effective_user.id
-    question_index = user_data[user_id]["question_index"]
-    question_data = questions[question_index]
-    question_text = question_data["question"]
+    if message.text == '👋 Поздороваться':
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True) #создание новых кнопок
+        btn1 = types.KeyboardButton('Как стать автором на Хабре?')
+        btn2 = types.KeyboardButton('Правила сайта')
+        btn3 = types.KeyboardButton('Советы по оформлению публикации')
+        markup.add(btn1, btn2, btn3)
+        bot.send_message(message.from_user.id, '❓ Задайте интересующий вас вопрос', reply_markup=markup) #ответ бота
 
-    # Создание клавиатуры с вариантами ответов
-    keyboard = [
-        [InlineKeyboardButton(option, callback_data=str(i))] for i, option in enumerate(question_data["options"])
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await context.bot.send_message(chat_id=user_id, text=question_text, reply_markup=reply_markup)
+    elif message.text == 'Как стать автором на Хабре?':
+        bot.send_message(message.from_user.id, 'Вы пишете первый пост, его проверяют модераторы, и, если всё хорошо, отправляют в основную ленту Хабра, где он набирает просмотры, комментарии и рейтинг. В дальнейшем премодерация уже не понадобится. Если с постом что-то не так, вас попросят его доработать.\n \nПолный текст можно прочитать по ' + '[ссылке](https://habr.com/ru/sandbox/start/)', parse_mode='Markdown')
 
-async def handle_answer(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Проверка ответа пользователя и отправка результата"""
-    query = update.callback_query
-    user_id = query.from_user.id
-    question_index = user_data[user_id]["question_index"]
-    question_data = questions[question_index]
-    user_choice = int(query.data)
-    correct_option = question_data["correct_option"]
+    elif message.text == 'Правила сайта':
+        bot.send_message(message.from_user.id, 'Прочитать правила сайта вы можете по ' + '[ссылке](https://habr.com/ru/docs/help/rules/)', parse_mode='Markdown')
 
-    # Проверка правильного ответа
-    if user_choice == correct_option:
-        await query.answer("Ваш ответ верный!")
-        user_data[user_id]["score"] += 1
-    else:
-        correct_answer = question_data["options"][correct_option]
-        await query.answer(f"Ваш ответ неверен. Правильный ответ: {correct_answer}")
+    elif message.text == 'Советы по оформлению публикации':
+        bot.send_message(message.from_user.id, 'Подробно про советы по оформлению публикаций прочитать по ' + '[ссылке](https://habr.com/ru/docs/companies/design/)', parse_mode='Markdown')
 
-    # Переход к следующему вопросу или завершение опроса
-    if question_index + 1 < len(questions):
-        user_data[user_id]["question_index"] += 1
-        await ask_question(update, context)
-    else:
-        score = user_data[user_id]["score"]
-        await context.bot.send_message(chat_id=user_id, text=f"Опрос завершен. Количество правильных ответов: {score}/{len(questions)}.")
-        await context.bot.send_message(chat_id=user_id, text="Хотите пройти опрос снова? Введите /start.")
-        user_data[user_id] = {"score": 0, "question_index": 0}
 
-def main() -> None:
-    """Запуск бота"""
-    application = Application.builder().token(TOKEN).build()
-
-    # Регистрация обработчиков
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CallbackQueryHandler(handle_answer))
-
-    # Запуск бота
-    application.run_polling()
-
-if __name__ == '__main__':
-    main()
+bot.polling(none_stop=True, interval=0) #обязательная для работы бота часть
